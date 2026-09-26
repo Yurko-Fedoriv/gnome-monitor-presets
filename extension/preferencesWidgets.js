@@ -3,16 +3,15 @@ import Gtk from 'gi://Gtk';
 import GObject from 'gi://GObject';
 import Pango from 'gi://Pango';
 
-// Both selected values and open dropdowns wrap long names and identifiers
-// rather than depending on a tooltip to expose the full text.
-export function fullValueCombo(params = {}) {
+// Closed selectors stay on one line; the open list always shows full values.
+export function fullValueCombo(params = {}, {selectedText = text => text} = {}) {
     const factory = popup => {
         const result = new Gtk.SignalListItemFactory();
         result.connect('setup', (_factory, item) => {
             const box = new Gtk.Box({spacing: 12});
-            box.append(new Gtk.Label({xalign: 0, hexpand: true, wrap: true,
+            box.append(new Gtk.Label({xalign: 0, hexpand: true, wrap: popup,
                 wrap_mode: Pango.WrapMode.WORD_CHAR,
-                ellipsize: Pango.EllipsizeMode.NONE,
+                ellipsize: popup ? Pango.EllipsizeMode.NONE : Pango.EllipsizeMode.END,
                 max_width_chars: popup ? 64 : 40, margin_top: 6, margin_bottom: 6}));
             if (popup) {
                 const check = new Gtk.Image({icon_name: 'object-select-symbolic', pixel_size: 16});
@@ -25,7 +24,8 @@ export function fullValueCombo(params = {}) {
             item.set_child(box);
         });
         result.connect('bind', (_factory, item) => {
-            item.get_child().get_first_child().label = item.get_item().get_string();
+            const text = item.get_item().get_string();
+            item.get_child().get_first_child().label = popup ? text : selectedText(text);
         });
         return result;
     };

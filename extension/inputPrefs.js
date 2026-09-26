@@ -94,7 +94,11 @@ export async function inputPreferences(owner) {
                 row.add_row(optionRow);
             }
             const output = fullValueCombo({title: 'Audio output',
-                subtitle: audioError ? 'Audio outputs unavailable; saved association retained' : 'Choose the sound output activated by this monitor’s speaker button.'});
+                subtitle: audioError ? 'Audio outputs unavailable; saved association retained' : 'Activated by this monitor’s speaker button.'},
+            {selectedText: text => {
+                const name = text.split(' — ')[0];
+                return name !== text && text.endsWith(' (unavailable)') ? `${name} (unavailable)` : name;
+            }});
             let choices = [];
             let updating = false;
             const updateOutput = () => {
