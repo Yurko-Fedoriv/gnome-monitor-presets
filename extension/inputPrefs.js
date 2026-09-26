@@ -6,6 +6,7 @@ import GLib from 'gi://GLib';
 const same = (a, b) => JSON.stringify(a?.slice(1)) === JSON.stringify(b?.slice(1));
 
 export async function inputPreferences(owner) {
+    owner._clearCapabilityAudio?.();
     for (const key of ['_inputGroup', '_actionGroup']) if (owner[key]) owner._page.remove(owner[key]);
     const state = await owner._run('action-state');
     const initial = await owner._run('monitor-capabilities');
@@ -28,23 +29,44 @@ export async function inputPreferences(owner) {
     const displayRows = [];
     const expanded = new Map();
     const actionRefreshers = [];
+    const audioRefreshers = [];
+    const assignments = () => {
+        try { return JSON.parse(owner._settings.get_string('monitor-audio-outputs')); }
+        catch (_) { return {}; }
+    };
+    let audioUpdate = 0;
+    const updateAudioChoices = () => {
+        // Replacing a ComboRow model from its own notify::selected callback
+        // can dispose GTK's selection model while the setter is still running.
+        if (audioUpdate) return;
+        audioUpdate = GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+            audioUpdate = 0;
+            for (const update of audioRefreshers) update();
+            return GLib.SOURCE_REMOVE;
+        });
+    };
+    const audioSignal = owner._settings.connect('changed::monitor-audio-outputs', updateAudioChoices);
+    owner._clearCapabilityAudio = () => {
+        owner._settings.disconnect(audioSignal);
+        if (audioUpdate) GLib.source_remove(audioUpdate);
+        audioUpdate = 0;
+        audioRefreshers.length = 0;
+        owner._clearCapabilityAudio = null;
+    };
     const showDisplays = () => {
+        audioRefreshers.length = 0;
         for (const row of displayRows) discovery.remove(row);
         displayRows.length = 0;
         for (const target of targets) {
             const subtitle = () => target.inputs.map(i => i.label).join(' · ') + (!target.edid ? ' · disconnected' : '');
-            const row = new Adw.ActionRow({title: `${target.connector} · ${target.spec[2]}`, subtitle: subtitle()});
-            const capabilities = new Adw.ExpanderRow({title: 'Capabilities',
-                subtitle: target.controls_probed ? 'Discovered controls and manual options' : 'Discover to check hardware controls',
-                expanded: expanded.get(JSON.stringify(target.spec.slice(1))) ?? false});
-            capabilities.connect('notify::expanded', () => expanded.set(JSON.stringify(target.spec.slice(1)), capabilities.expanded));
-            const content = new Gtk.ListBox({selection_mode: Gtk.SelectionMode.NONE, css_classes: ['boxed-list']});
-            content.append(row);
-            content.append(capabilities);
+            const identity = JSON.stringify(target.spec.slice(1));
+            const row = new Adw.ExpanderRow({title: `${target.connector} · ${target.spec[2]}`,
+                subtitle: subtitle(), expanded: expanded.get(identity) ?? false});
+            row.connect('notify::expanded', () => expanded.set(identity, row.expanded));
             const detected = Object.keys(target.controls ?? {});
             if (target.controls_probed || detected.length) {
                 const labels = {brightness: 'Brightness', volume: 'Monitor volume', mute: 'Monitor mute'};
-                capabilities.add_row(new Adw.ActionRow({title: 'Hardware controls',
+                row.add_row(new Adw.ActionRow({title: 'Hardware controls',
                     subtitle: detected.map(key => labels[key] ?? key).join(' · ') || 'None detected'}));
             }
             for (const option of target.options || []) {
@@ -66,34 +88,46 @@ export async function inputPreferences(owner) {
                 });
                 optionRow.add_suffix(toggle);
                 optionRow.activatable_widget = toggle;
-                capabilities.add_row(optionRow);
-            }
-            const identity = JSON.stringify(target.spec.slice(1));
-            const assignments = () => {
-                try { return JSON.parse(owner._settings.get_string('monitor-audio-outputs')); }
-                catch (_) { return {}; }
-            };
-            const saved = assignments()[identity];
-            const choices = [{key: null, label: 'Not assigned'}, ...audioOutputs];
-            if (saved && !choices.some(c => c.key === saved)) {
-                let label = 'Saved output';
-                try { const parts = JSON.parse(saved); label = [parts[2], parts[1]].filter(Boolean).join(' — '); } catch (_) { /* Keep unknown saved values. */ }
-                choices.push({key: saved, label: `${label} (unavailable)`});
+                row.add_row(optionRow);
             }
             const output = new Adw.ComboRow({title: 'Audio output',
-                subtitle: audioError ? 'Audio outputs unavailable; saved association retained' : 'The volume icon routes sound here. This does not change software volume.',
-                model: Gtk.StringList.new(choices.map(c => c.label)),
-                selected: Math.max(0, choices.findIndex(c => c.key === saved))});
+                subtitle: audioError ? 'Audio outputs unavailable; saved association retained' : 'The volume icon routes sound here. This does not change software volume.'});
+            let choices = [];
+            let updating = false;
+            const updateOutput = () => {
+                const saved = assignments();
+                const selected = saved[identity];
+                const used = new Set(Object.entries(saved).filter(([key]) => key !== identity).map(([, value]) => value));
+                const previous = choices;
+                choices = [{key: null, label: 'Not assigned'},
+                    ...audioOutputs.filter(choice => choice.key === selected || !used.has(choice.key))];
+                if (selected && !choices.some(c => c.key === selected)) {
+                    let label = 'Saved output';
+                    try { const parts = JSON.parse(selected); label = [parts[2], parts[1]].filter(Boolean).join(' — '); } catch (_) { /* Keep unknown saved values. */ }
+                    choices.push({key: selected, label: `${label} (unavailable)`});
+                }
+                updating = true;
+                if (JSON.stringify(previous) !== JSON.stringify(choices))
+                    output.model = Gtk.StringList.new(choices.map(c => c.label));
+                output.selected = Math.max(0, choices.findIndex(c => c.key === selected));
+                updating = false;
+            };
+            updateOutput();
+            audioRefreshers.push(updateOutput);
             output.connect('notify::selected', () => {
+                if (updating) return;
                 const saved = assignments();
                 const selected = choices[output.selected]?.key;
+                if (selected && Object.entries(saved).some(([key, value]) => key !== identity && value === selected)) {
+                    updateAudioChoices();
+                    return;
+                }
                 if (selected) saved[identity] = selected;
                 else delete saved[identity];
                 owner._settings.set_string('monitor-audio-outputs', JSON.stringify(saved));
             });
-            capabilities.add_row(output);
-            capabilities.visible = !!((target.options?.length ?? 0) || detected.length || audioOutputs.length || saved);
-            discovery.add(content); displayRows.push(content);
+            row.add_row(output);
+            discovery.add(row); displayRows.push(row);
         }
     };
     showDisplays();

@@ -203,10 +203,10 @@ GPL-2.0-or-later; see [LICENSE](LICENSE) and [NOTICE.md](NOTICE.md).
 
 Use **Preferences → Monitor capabilities → Discover capabilities** with your
 monitors active. Discovery saves their inputs, available hardware controls, and
-last-known brightness, volume and mute values. Expand **Capabilities** beneath a
-monitor to review its controls, set manual options such as Type-C presence, and
-associate its HDMI/DisplayPort audio output. Associations save immediately and
-are retained when an audio output disconnects.
+last-known brightness, volume and mute values. Expand a monitor row to review its
+controls, set manual options such as Type-C presence, and associate its HDMI/DisplayPort audio output. Associations save immediately and
+are retained when an audio output disconnects. Outputs assigned to another monitor
+are hidden from the chooser until released.
 
 Expand the monitor's aligned statistics row in the panel for its hardware sliders.
 Brightness and volume use the monitor's own DDC settings, and the mute button

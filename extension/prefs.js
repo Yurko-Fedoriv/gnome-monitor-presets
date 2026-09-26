@@ -32,6 +32,7 @@ export default class Preferences extends ExtensionPreferences {
             }));
         window.connect('close-request', () => {
             this._closed = true;
+            this._clearCapabilityAudio?.();
             this._clearDeviceRow();
             this._stopDetection();
             for (const signal of syncSignals)

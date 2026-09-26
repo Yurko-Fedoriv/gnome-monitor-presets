@@ -128,7 +128,7 @@ values, while explicit unsupported/unusable responses remove that control.
 writes update this same cache. Values changed outside the extension remain stale
 until the next discovery; the panel does not poll the hardware.
 
-Preferences renders driver manual options inside each monitor's **Capabilities**
+Preferences renders driver manual options inside each monitor's
 expander, beside detected controls and the audio-output choice. Add new manual
 options via driver descriptors instead of adding model checks to the UI.
 Audio associations retain the `monitor-audio-outputs` setting and are read by the

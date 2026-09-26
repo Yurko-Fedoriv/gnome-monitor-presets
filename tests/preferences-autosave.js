@@ -5,6 +5,9 @@ import GLib from 'gi://GLib';
 import {inputPreferences} from '../extension/inputPrefs.js';
 
 Adw.init();
+const settle = () => new Promise(resolve => GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+    resolve(); return GLib.SOURCE_REMOVE;
+}));
 const project = GLib.getenv('PROJECT');
 const [, bytes] = Gio.File.new_for_path(`${project}/extension/prefs.js`).load_contents(null);
 const source = new TextDecoder().decode(bytes)
@@ -44,9 +47,10 @@ try {
     const target = {spec, connector: 'HDMI-1', edid: 'test-edid', usb_c: true,
         options: [{key: 'usb_c', type: 'boolean', label: 'Has Type-C', value: true, tooltip: 'Test option'}],
         inputs: [{code: 15, label: 'DisplayPort'}, {code: 16, label: 'USB-C'}]};
+    const second = {...target, spec: ['HDMI-2', 'GSM', 'LG HDR 4K', 'second'], connector: 'HDMI-2'};
     p._run = async command => command === 'action-state'
         ? {actions: JSON.parse(p._settings.get_string('monitor-actions')), controllers: []}
-        : {targets: [JSON.parse(JSON.stringify(target))], updated: 1, warnings: [],
+        : {targets: JSON.parse(JSON.stringify([target, second])), updated: 1, warnings: [],
             audio_outputs: [{key: 'test-output', label: 'HDMI / DisplayPort'}]};
     const originalRun = p._run;
     await inputPreferences(p);
@@ -63,14 +67,39 @@ try {
     collect(usbRow);
     if (!marks.some(m => m.opacity === 1)) throw Error('Missing selected USB marker');
     const discoveryRow = find(p._inputGroup, 'HDMI-1 · LG HDR 4K');
-    const capabilityRow = find(p._inputGroup, 'Capabilities');
-    if (!(capabilityRow instanceof Adw.ExpanderRow)) throw Error('Missing capabilities expander');
+    const capabilityRow = discoveryRow;
+    if (!(capabilityRow instanceof Adw.ExpanderRow) || find(p._inputGroup, 'Capabilities'))
+        throw Error('Capabilities are not inline in the monitor row');
     capabilityRow.expanded = true;
     const toggle = childType(find(capabilityRow, 'Has Type-C'), Gtk.Switch);
     const output = find(capabilityRow, 'Audio output');
-    output.selected = 1;
+    output.selected = 1; await settle();
     if (JSON.parse(p._settings.get_string('monitor-audio-outputs'))[JSON.stringify(spec.slice(1))] !== 'test-output')
         throw Error('Audio association not saved');
+    const secondRow = find(p._inputGroup, 'HDMI-2 · LG HDR 4K');
+    const secondOutput = find(secondRow, 'Audio output');
+    if (secondOutput.model.get_n_items() !== 1 || output.model.get_n_items() !== 2 || output.selected !== 1)
+        throw Error('Assigned output not hidden from other monitor or own selection lost');
+    output.selected = 0; await settle();
+    if (secondOutput.model.get_n_items() !== 2) throw Error('Released output did not return');
+    secondOutput.selected = 1; await settle();
+    if (output.model.get_n_items() !== 1 || secondOutput.selected !== 1)
+        throw Error('Assignment did not update other chooser live');
+    secondOutput.selected = 0; await settle();
+    output.selected = 1; await settle();
+    if (!discoveryRow.expanded || find(p._inputGroup, 'HDMI-1 · LG HDR 4K') !== discoveryRow)
+        throw Error('Audio changes rebuilt or collapsed monitor row');
+    // Disconnected monitors still reserve their saved outputs, including edits
+    // made from another preferences window.
+    const assigned = () => JSON.parse(p._settings.get_string('monitor-audio-outputs'));
+    p._settings.set_string('monitor-audio-outputs', JSON.stringify({'disconnected-monitor': 'test-output'}));
+    await settle();
+    if (output.model.get_n_items() !== 1 || secondOutput.model.get_n_items() !== 1 ||
+        assigned()['disconnected-monitor'] !== 'test-output')
+        throw Error('External assignment was overwritten or remained selectable');
+    p._settings.set_string('monitor-audio-outputs', '{}');
+    await settle();
+    output.selected = 1; await settle();
     let finish;
     p._run = () => new Promise(resolve => { finish = resolve; });
     toggle.active = false;
@@ -106,7 +135,7 @@ try {
     naming.emit('response', 'add'); naming.close();
     if (!JSON.parse(p._settings.get_string('monitor-actions')).some(a => a.name === 'Action 2'))
         throw Error('Named action was not saved');
-    p._closed = true; p._clearDeviceRow();
+    p._closed = true; p._clearDeviceRow(); p._clearCapabilityAudio?.();
     p._window.destroy();
-    print('PASS: remembered USB selection, stable discovery, action autosave, preset conflict warning and reopen');
+    print('PASS: remembered USB selection, inline capabilities, exclusive audio choices, stable discovery, action autosave, preset conflict warning and reopen');
 } finally { GLib.unlink(module); GLib.rmdir(temporary); }
