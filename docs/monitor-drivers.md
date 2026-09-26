@@ -100,3 +100,18 @@ are separate and require the user to be ready for the specific transition.
 Install with `/usr/bin/python3 install.py` only. It replaces schemas atomically;
 never compile/copy over a live installed `gschemas.compiled`.
 For agent-assisted work, see [the add-monitor-driver skill](../skills/add-monitor-driver/SKILL.md).
+
+## Brightness and onboard audio
+
+`controls.py` handles standard VCP 10 (brightness), 62 (speaker volume), and 8D
+(audio mute) independently of input switching. It never sends VCP 60 or vendor
+input commands. See [ddcutil feature definitions](https://www.ddcutil.com/vcpinfo_output/)
+and [brief response formats](https://www.ddcutil.com/command_getvcp/).
+
+Read-only queries on the current LG 27UK650/27UK850 and MSI MAG323UPF returned
+continuous brightness/volume ranges of 0–100 and simple mute values 1/2. This
+establishes readable controls, not physical verification of writes. Unsupported,
+complex mute responses, invalid ranges and unreachable devices are omitted.
+Every write revalidates active monitor identity, EDID, bus and current feature
+range; mute writes use only audio values 1/2, never screen-blank bits. Hardware
+writes still need a user-ready physical test. Automated tests mock DDC writes.

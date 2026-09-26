@@ -11,5 +11,9 @@
     <key name="startup-policy" type="s"><default>'last'</default><summary>Login preset: last or fixed</summary></key>
     <key name="fixed-preset" type="s"><default>''</default><summary>Fixed login preset ID</summary></key>
     <key name="restore-at-login" type="b"><default>true</default><summary>Restore a preset after login</summary></key>
+    <key name="monitor-audio-outputs" type="s">
+      <default>'{}'</default>
+      <summary>Audio output associations by monitor identity</summary>
+    </key>
   </schema>
 </schemalist>

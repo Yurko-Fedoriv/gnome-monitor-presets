@@ -198,3 +198,19 @@ GPL-2.0-or-later; see [LICENSE](LICENSE) and [NOTICE.md](NOTICE.md).
 - [Mutter native configuration parser](https://github.com/GNOME/mutter/blob/50.1/src/backends/meta-monitor-config-store.c)
 - [GNOME session modes](https://gjs.guide/extensions/topics/session-modes.html)
 - Hardware protocol references are linked from the individual driver READMEs.
+
+### Monitor brightness and sound
+
+Expand a monitor's statistics row in the panel menu to read its hardware controls.
+Brightness and volume sliders use the monitor's own DDC settings; the mute button
+also controls the monitor itself. Unsupported controls are omitted. Values are
+read again on opening and after changes, so the monitor's OSD remains authoritative.
+These controls require `ddcutil` and access to the monitor's I2C bus.
+
+**Output here** selects the computer's audio destination using GNOME's output
+routing and shows a checkmark while selected. Use the adjacent arrow to associate
+an HDMI/DisplayPort audio output with that monitor first. Associations are saved;
+automatic matching is used only when the monitor name and output are unambiguous.
+Two identically named LGs therefore require an explicit choice. Routing does not
+change software volume or software mute, and an advertised audio output does not
+necessarily mean the monitor contains speakers (it may have a headphone socket).

@@ -14,7 +14,7 @@ const delay = ms => new Promise(resolve => GLib.timeout_add(GLib.PRIORITY_DEFAUL
 
 export default class Driver extends Extension {
     enable() {
-        this.exercise().catch(error => this.record({error: error.stack ?? `${error}`}));
+        this.exercise().catch(error => this.record({error: `${error}\n${error.stack}`}));
     }
 
     record(data) {
@@ -24,6 +24,8 @@ export default class Driver extends Extension {
     async exercise() {
         await delay(1000);
         const extension = Main.extensionManager.lookup('monitor-presets@local').stateObj;
+        const {exerciseControls} = await import(`file://${GLib.getenv('PROJECT')}/tests/monitor-controls.js`);
+        await exerciseControls(extension, delay);
         extension._settings.set_boolean('confirm-layout-changes', true);
         extension._settings.set_string('monitor-actions', JSON.stringify([{id: 'test-action', name: 'Test action',
             outputs: [], preset: null, triggers: [{type: 'keyboard', accelerator: '<Super><Control>F12'}]}]));
@@ -139,7 +141,7 @@ export default class Driver extends Extension {
         const immediate = await extension._command('status');
         if (extension._dialog || immediate.pending)
             throw new Error('Immediate apply left a confirmation dialog or pending rollback');
-        this.record({ok: true, tested: ['menu and preview', 'switcher', 'apply dialog',
+        this.record({ok: true, tested: ['hardware controls and audio routing', 'menu and preview', 'switcher', 'apply dialog',
             'confirm', 'save dialog', 'undo', 'revert', 'apply without confirmation']});
     }
 

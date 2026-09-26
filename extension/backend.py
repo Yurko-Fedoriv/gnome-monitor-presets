@@ -359,6 +359,10 @@ def perform_action(action, display, db, suppress):
 
 def execute(args, display, db):
     command = args.command
+    if command in ('monitor-controls', 'set-monitor-control'):
+        import controls
+        return controls.execute(json.loads(args.value), display.capture(), drm_displays(),
+                                write=command == 'set-monitor-control')
     if command in ('input-targets', 'refresh-action-inputs', 'monitor-profile'):
         from input_actions import all_targets
         from inputs import describe, refresh, identity
@@ -550,7 +554,7 @@ def main():
                 result.setdefault('warnings', []).append(f'Could not save login layout: {error}')
         if args.command not in ("status", "export-current", "kvm-targets"):
             LOG.info("%s: %s", args.command, json.dumps(result))
-        if args.command not in ("status", "export-current", "verify-current", "revert", "startup", "sync-native", "kvm-targets", "kvm-disconnect", "refresh-inputs", "input-profile", "input-targets", "refresh-action-inputs", "switch-input", "action-state", "run-action", "monitor-profile"):
+        if args.command not in ("monitor-controls", "set-monitor-control", "status", "export-current", "verify-current", "revert", "startup", "sync-native", "kvm-targets", "kvm-disconnect", "refresh-inputs", "input-profile", "input-targets", "refresh-action-inputs", "switch-input", "action-state", "run-action", "monitor-profile"):
             write_json(ROOT / "presets.json", db)
         print(json.dumps(result))
 

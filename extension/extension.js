@@ -13,7 +13,8 @@ import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import * as SwitcherPopup from 'resource:///org/gnome/shell/ui/switcherPopup.js';
 import {run, count, summary} from './client.js';
-import {preview, details} from './preview.js';
+import {preview} from './preview.js';
+import {MonitorAudio, monitorRow} from './monitorControls.js';
 import {KvmWatcher} from './kvm.js';
 import {InputShortcuts} from './inputShortcuts.js';
 
@@ -64,6 +65,7 @@ export default class MonitorPresets extends Extension {
     enable() {
         this._enabled = true;
         this._settings = this.getSettings();
+        this._monitorAudio = new MonitorAudio(this._settings);
         this._kvmWatcher = new KvmWatcher(this._settings, (...args) => this._command(...args));
         this._nativeSettingSignals = ['restore-at-login', 'startup-policy', 'fixed-preset'].map(key =>
             this._settings.connect(`changed::${key}`, () => this._scheduleNativeSync()));
@@ -174,9 +176,14 @@ export default class MonitorPresets extends Extension {
         layoutPreview.x_expand = true;
         info.add_child(layoutPreview);
         menu.addMenuItem(info);
-        const detailItem = new PopupMenu.PopupBaseMenuItem({reactive: false});
-        detailItem.add_child(details(state.current));
-        menu.addMenuItem(detailItem);
+        const peers = state.current.logical.flatMap(g => g.monitors.map(m => m.spec));
+        for (const group of state.current.logical) {
+            for (const monitor of group.monitors) {
+                const matches = state.ddc.filter(d => d.connector === monitor.spec[0]);
+                menu.addMenuItem(monitorRow(this.path, monitor, group,
+                    matches.length === 1 ? matches[0] : null, this._monitorAudio, peers));
+            }
+        }
         menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
         for (const preset of state.presets) {
             const item = new PopupMenu.PopupMenuItem(`${preset.name} · ${count(preset.layout)} ${count(preset.layout) === 1 ? 'display' : 'displays'}`);
@@ -332,6 +339,8 @@ export default class MonitorPresets extends Extension {
         this._dialog?.destroy();
         this._indicator?.destroy();
         this._indicator = null;
+        this._monitorAudio?.destroy();
+        this._monitorAudio = null;
         this._state = null;
         this._settings = null;
     }
