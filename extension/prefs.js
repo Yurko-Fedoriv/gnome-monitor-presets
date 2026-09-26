@@ -2,10 +2,10 @@ import Adw from 'gi://Adw';
 import Gio from 'gi://Gio';
 import Gtk from 'gi://Gtk';
 import GLib from 'gi://GLib';
-import {fullValueCombo} from './preferencesWidgets.js';
+import {alignedDisplaySummary, fullValueCombo} from './preferencesWidgets.js';
 import {usbDevices, usbKey} from './kvm.js';
 import {ExtensionPreferences} from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
-import {run, summary} from './client.js';
+import {run} from './client.js';
 import {inputPreferences} from './inputPrefs.js';
 
 export default class Preferences extends ExtensionPreferences {
@@ -254,7 +254,7 @@ export default class Preferences extends ExtensionPreferences {
         };
         for (const [index, preset] of state.presets.entries()) {
             const expander = new Adw.ExpanderRow({title: preset.name,
-                subtitle: preset.unavailable ?? summary(preset.layout), subtitle_lines: 0});
+                subtitle: preset.unavailable ?? alignedDisplaySummary(preset.layout), subtitle_lines: 0});
             rows.set(expander, index);
             list.append(expander);
             const order = new Gtk.Box({spacing: 6, valign: Gtk.Align.CENTER});
