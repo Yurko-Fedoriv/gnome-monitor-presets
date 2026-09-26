@@ -1,0 +1,2 @@
+# Allow the active local user to access only MSI monitor control interfaces.
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="1462", ATTRS{idProduct}=="3fa4", TAG+="uaccess"

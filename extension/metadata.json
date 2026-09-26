@@ -1,0 +1,9 @@
+{
+  "uuid": "monitor-presets@local",
+  "name": "Monitor Presets",
+  "description": "Save display layouts, switch with Super+P, and configure actions when a KVM disconnects.",
+  "shell-version": ["50"],
+  "session-modes": ["user", "unlock-dialog"],
+  "version": 27,
+  "settings-schema": "org.gnome.shell.extensions.monitor-presets"
+}
