@@ -5,6 +5,7 @@ import St from 'gi://St';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import {Slider} from 'resource:///org/gnome/shell/ui/slider.js';
+import {monitorName} from './monitorNames.js';
 import {run} from './client.js';
 
 // A dedicated connection enumerates inactive HDMI ports too, including outputs
@@ -82,7 +83,7 @@ function controlRow() {
 }
 
 export function monitorRow(path, monitor, group, capability, audio, command = run) {
-    const values = [`${monitor.spec[0]}${group.primary ? '*' : ''}`, `${monitor.width}×${monitor.height}`,
+    const values = [`${monitorName(monitor.spec)}${group.primary ? '*' : ''}`, `${monitor.width}×${monitor.height}`,
         `${Number(monitor.refresh.toFixed(2))} Hz`, `${Math.round(group.scale * 100)}%`,
         `X: ${group.x}`, `Y: ${group.y}`];
     const item = new PopupMenu.PopupSubMenuMenuItem('');

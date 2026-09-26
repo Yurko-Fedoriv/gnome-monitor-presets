@@ -10,7 +10,7 @@ class LGHDR(GenericDDC):
     readback = 'unreliable'
     values = {15: 0xd0, 16: 0xd1, 17: 0x90, 18: 0x91}
     manual_options = ({'key': 'usb_c', 'type': 'boolean', 'label': 'Has Type-C',
-        'default': False, 'tooltip': 'LG reports the same input list with or without USB-C. '
+        'default': False, 'tooltip': 'LG reports the same input list with or without USB-C.\n'
         'Enable this only for the model with a USB-C video port.'},)
 
     def matches(self, spec):

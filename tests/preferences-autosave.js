@@ -65,8 +65,8 @@ try {
         for (let c = widget.get_first_child(); c; c = c.get_next_sibling()) collect(c);
     };
     collect(usbRow);
-    if (!marks.some(m => m.opacity === 1)) throw Error('Missing selected USB marker');
-    const discoveryRow = find(p._inputGroup, 'HDMI-1 · LG HDR 4K');
+    if (!marks.some(m => m.visible && m.opacity === 1)) throw Error('Missing selected USB marker');
+    const discoveryRow = find(p._inputGroup, 'HDMI-1 · LG');
     const capabilityRow = discoveryRow;
     if (!(capabilityRow instanceof Adw.ExpanderRow) || find(p._inputGroup, 'Capabilities'))
         throw Error('Capabilities are not inline in the monitor row');
@@ -76,7 +76,7 @@ try {
     output.selected = 1; await settle();
     if (JSON.parse(p._settings.get_string('monitor-audio-outputs'))[JSON.stringify(spec.slice(1))] !== 'test-output')
         throw Error('Audio association not saved');
-    const secondRow = find(p._inputGroup, 'HDMI-2 · LG HDR 4K');
+    const secondRow = find(p._inputGroup, 'HDMI-2 · LG');
     const secondOutput = find(secondRow, 'Audio output');
     if (secondOutput.model.get_n_items() !== 1 || output.model.get_n_items() !== 2 || output.selected !== 1)
         throw Error('Assigned output not hidden from other monitor or own selection lost');
@@ -87,7 +87,7 @@ try {
         throw Error('Assignment did not update other chooser live');
     secondOutput.selected = 0; await settle();
     output.selected = 1; await settle();
-    if (!discoveryRow.expanded || find(p._inputGroup, 'HDMI-1 · LG HDR 4K') !== discoveryRow)
+    if (!discoveryRow.expanded || find(p._inputGroup, 'HDMI-1 · LG') !== discoveryRow)
         throw Error('Audio changes rebuilt or collapsed monitor row');
     // Disconnected monitors still reserve their saved outputs, including edits
     // made from another preferences window.
@@ -103,16 +103,16 @@ try {
     let finish;
     p._run = () => new Promise(resolve => { finish = resolve; });
     toggle.active = false;
-    if (find(p._inputGroup, 'HDMI-1 · LG HDR 4K') !== discoveryRow) throw Error('Toggle collapsed discovery');
+    if (find(p._inputGroup, 'HDMI-1 · LG') !== discoveryRow) throw Error('Toggle collapsed discovery');
     finish({targets: [{...target, usb_c: false, options: [{...target.options[0], value: false}], inputs: [{code: 15, label: 'DisplayPort'}]}]});
     await Promise.resolve();
-    if (find(p._inputGroup, 'HDMI-1 · LG HDR 4K') !== discoveryRow) throw Error('Toggle replaced discovery row');
+    if (find(p._inputGroup, 'HDMI-1 · LG') !== discoveryRow) throw Error('Toggle replaced discovery row');
     toggle.active = true; finish(null); await Promise.resolve();
     if (toggle.active || !toggle.sensitive) throw Error('Failed toggle not restored');
     p._run = originalRun;
     toggle.active = true; await Promise.resolve();
     const expander = find(p._actionGroup, 'Action 1');
-    const destination = find(expander, 'HDMI-1 · LG HDR 4K');
+    const destination = find(expander, 'HDMI-1 · LG');
     destination.selected = 2;
     const config = () => JSON.parse(p._settings.get_string('monitor-actions'))[0];
     if (config().outputs[0].code !== 16) throw Error('Action destination not autosaved');
@@ -120,15 +120,15 @@ try {
     if (!destination.subtitle.includes('Enabled by this preset') || config().outputs[0].code !== 16)
         throw Error('Preset conflict should warn, not remove redirect');
     await inputPreferences(p);
-    if (find(find(p._actionGroup, 'Action 1'), 'HDMI-1 · LG HDR 4K').selected !== 2)
+    if (find(find(p._actionGroup, 'Action 1'), 'HDMI-1 · LG').selected !== 2)
         throw Error('Action destination not restored');
     if (find(p._inputGroup, 'Audio output').selected !== 1) throw Error('Audio association not restored');
-    const before = find(p._inputGroup, 'HDMI-1 · LG HDR 4K');
+    const before = find(p._inputGroup, 'HDMI-1 · LG');
     p._run = () => new Promise(resolve => { finish = resolve; });
     p._inputGroup.header_suffix.emit('clicked');
-    if (find(p._inputGroup, 'HDMI-1 · LG HDR 4K') !== before) throw Error('Refresh collapsed discovery during query');
+    if (find(p._inputGroup, 'HDMI-1 · LG') !== before) throw Error('Refresh collapsed discovery during query');
     finish(null); await Promise.resolve();
-    if (find(p._inputGroup, 'HDMI-1 · LG HDR 4K') !== before) throw Error('Failed refresh lost discovery');
+    if (find(p._inputGroup, 'HDMI-1 · LG') !== before) throw Error('Failed refresh lost discovery');
     p._actionGroup.header_suffix.emit('clicked');
     const naming = p._window.get_visible_dialog();
     if (!naming || naming.extra_child.text !== 'Action 2') throw Error('New action did not ask for a default name');

@@ -2,6 +2,7 @@ import Adw from 'gi://Adw';
 import Gdk from 'gi://Gdk';
 import Gtk from 'gi://Gtk';
 import GLib from 'gi://GLib';
+import {monitorName} from './monitorNames.js';
 import {fullValueCombo} from './preferencesWidgets.js';
 
 const same = (a, b) => JSON.stringify(a?.slice(1)) === JSON.stringify(b?.slice(1));
@@ -61,18 +62,18 @@ export async function inputPreferences(owner) {
         for (const target of targets) {
             const subtitle = () => target.inputs.map(i => i.label).join(' · ') + (!target.edid ? ' · disconnected' : '');
             const identity = JSON.stringify(target.spec.slice(1));
-            const row = new Adw.ExpanderRow({title: `${target.connector} · ${target.spec[2]}`,
+            const row = new Adw.ExpanderRow({title: monitorName(target.spec, target.connector), tooltip_text: target.spec[2],
                 subtitle: subtitle(), expanded: expanded.get(identity) ?? false});
             row.connect('notify::expanded', () => expanded.set(identity, row.expanded));
             const detected = Object.keys(target.controls ?? {});
             if (target.controls_probed || detected.length) {
                 const labels = {brightness: 'Brightness', volume: 'Monitor volume', mute: 'Monitor mute'};
-                row.add_row(new Adw.ActionRow({title: 'Hardware controls',
-                    subtitle: detected.map(key => labels[key] ?? key).join(' · ') || 'None detected'}));
+                row.add_row(new Adw.ActionRow({title: `Hardware controls: ${detected.map(key => labels[key] ?? key).join(' · ') || 'None detected'}`,
+                    title_lines: 0}));
             }
             for (const option of target.options || []) {
                 if (option.type !== 'boolean') continue;
-                const optionRow = new Adw.ActionRow({title: option.label, subtitle: option.tooltip});
+                const optionRow = new Adw.ActionRow({title: option.label, subtitle: option.tooltip, subtitle_lines: 0});
                 const toggle = new Gtk.Switch({active: option.value, valign: Gtk.Align.CENTER});
                 toggle.update_property([Gtk.AccessibleProperty.LABEL], [option.label]);
                 let changing = false;
@@ -92,7 +93,7 @@ export async function inputPreferences(owner) {
                 row.add_row(optionRow);
             }
             const output = fullValueCombo({title: 'Audio output',
-                subtitle: audioError ? 'Audio outputs unavailable; saved association retained' : 'The volume icon routes sound here. This does not change software volume.'});
+                subtitle: audioError ? 'Audio outputs unavailable; saved association retained' : 'The volume icon routes sound here.\nThis does not change software volume.'});
             let choices = [];
             let updating = false;
             const updateOutput = () => {
@@ -251,7 +252,7 @@ export async function inputPreferences(owner) {
                 if (previous?.code && !codes.includes(previous.code)) {
                     codes.push(previous.code); labels.push(`Saved input 0x${previous.code.toString(16)}`);
                 }
-                const row = fullValueCombo({title: `${target.connector} · ${target.spec[2]}`,
+                const row = fullValueCombo({title: monitorName(target.spec, target.connector), tooltip_text: target.spec[2],
                     model: Gtk.StringList.new(labels), selected: Math.max(0, codes.indexOf(previous?.code))});
                 row.connect('notify::selected', () => {
                     const code = codes[row.selected];

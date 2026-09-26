@@ -22,5 +22,5 @@ gnome-extensions pack --force --out-dir="$project/dist" \
     --extra-source=kvm.py --extra-source=inputs.py --extra-source=msi.py \
     --extra-source=input_actions.py --extra-source=inputShortcuts.js \
     --extra-source=audio.py --extra-source=controls.py --extra-source=monitorControls.js \
-    --extra-source=preferencesWidgets.js --extra-source=inputPrefs.js --extra-source=monitor_drivers \
+    --extra-source=monitorNames.js --extra-source=preferencesWidgets.js --extra-source=inputPrefs.js --extra-source=monitor_drivers \
     --extra-source=LICENSE --extra-source=NOTICE.md "$stage/extension"
