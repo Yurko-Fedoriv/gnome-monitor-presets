@@ -2,6 +2,7 @@ import Adw from 'gi://Adw';
 import Gdk from 'gi://Gdk';
 import Gtk from 'gi://Gtk';
 import GLib from 'gi://GLib';
+import {fullValueCombo} from './preferencesWidgets.js';
 
 const same = (a, b) => JSON.stringify(a?.slice(1)) === JSON.stringify(b?.slice(1));
 
@@ -90,7 +91,7 @@ export async function inputPreferences(owner) {
                 optionRow.activatable_widget = toggle;
                 row.add_row(optionRow);
             }
-            const output = new Adw.ComboRow({title: 'Audio output',
+            const output = fullValueCombo({title: 'Audio output',
                 subtitle: audioError ? 'Audio outputs unavailable; saved association retained' : 'The volume icon routes sound here. This does not change software volume.'});
             let choices = [];
             let updating = false;
@@ -224,7 +225,7 @@ export async function inputPreferences(owner) {
         triggerControls.append(triggerList); triggerControls.append(triggerMenu);
         triggerRow.add_suffix(triggerControls); expander.add_row(triggerRow);
         const presets = [null, ...owner._presets];
-        const preset = new Adw.ComboRow({title: 'Display preset', model: Gtk.StringList.new(['Keep current', ...owner._presets.map(p => p.name)]),
+        const preset = fullValueCombo({title: 'Display preset', model: Gtk.StringList.new(['Keep current', ...owner._presets.map(p => p.name)]),
             selected: Math.max(0, presets.findIndex(p => p?.id === action.preset))});
         expander.add_row(preset);
         let monitorRows = [];
@@ -250,7 +251,7 @@ export async function inputPreferences(owner) {
                 if (previous?.code && !codes.includes(previous.code)) {
                     codes.push(previous.code); labels.push(`Saved input 0x${previous.code.toString(16)}`);
                 }
-                const row = new Adw.ComboRow({title: `${target.connector} · ${target.spec[2]}`,
+                const row = fullValueCombo({title: `${target.connector} · ${target.spec[2]}`,
                     model: Gtk.StringList.new(labels), selected: Math.max(0, codes.indexOf(previous?.code))});
                 row.connect('notify::selected', () => {
                     const code = codes[row.selected];

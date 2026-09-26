@@ -2,7 +2,7 @@ import Adw from 'gi://Adw';
 import Gio from 'gi://Gio';
 import Gtk from 'gi://Gtk';
 import GLib from 'gi://GLib';
-import Pango from 'gi://Pango';
+import {fullValueCombo} from './preferencesWidgets.js';
 import {usbDevices, usbKey} from './kvm.js';
 import {ExtensionPreferences} from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
 import {run, summary} from './client.js';
@@ -42,14 +42,14 @@ export default class Preferences extends ExtensionPreferences {
         const restore = new Adw.SwitchRow({title: 'Restore a preset after login'});
         this._settings.bind('restore-at-login', restore, 'active', Gio.SettingsBindFlags.DEFAULT);
         startup.add(restore);
-        const policy = new Adw.ComboRow({title: 'Default layout',
+        const policy = fullValueCombo({title: 'Default layout',
             model: Gtk.StringList.new(['Last activated preset', 'Always use a fixed preset']),
             selected: this._settings.get_string('startup-policy') === 'fixed' ? 1 : 0});
         policy.connect('notify::selected', () => {
             this._settings.set_string('startup-policy', policy.selected === 1 ? 'fixed' : 'last');
         });
         startup.add(policy);
-        this._fixed = new Adw.ComboRow({title: 'Fixed preset'});
+        this._fixed = fullValueCombo({title: 'Fixed preset'});
         startup.add(this._fixed);
         this._fixed.connect('notify::selected', () => {
             if (!this._loading && this._presets?.[this._fixed.selected])
@@ -132,39 +132,7 @@ export default class Preferences extends ExtensionPreferences {
         let updatingDevices = false;
         let deviceRow;
         const deviceNames = () => devices.map(d => `${detectedKeys.has(usbKey(d)) ? 'Detected · ' : ''}${d.name}`);
-        const deviceNameFactory = popup => {
-            const factory = new Gtk.SignalListItemFactory();
-            factory.connect('setup', (_factory, item) => {
-                const box = new Gtk.Box({spacing: 12});
-                const label = new Gtk.Label({xalign: 0, hexpand: true, wrap: popup,
-                    wrap_mode: Pango.WrapMode.WORD_CHAR,
-                    ellipsize: popup ? Pango.EllipsizeMode.NONE : Pango.EllipsizeMode.END,
-                    max_width_chars: popup ? 64 : 32, margin_top: 6, margin_bottom: 6});
-                box.append(label);
-                if (popup) box.append(new Gtk.Image({icon_name: 'object-select-symbolic',
-                    pixel_size: 16, tooltip_text: 'Selected device'}));
-                item.set_child(box);
-            });
-            factory.connect('bind', (_factory, item) => {
-                const fullName = item.get_item().get_string();
-                const name = popup ? fullName : fullName.replace(/^Detected · /, '');
-                const box = item.get_child();
-                box.get_first_child().label = name;
-                box.tooltip_text = name;
-                if (popup) {
-                    const update = () => { box.get_last_child().opacity = deviceRow?.selected === item.get_position() ? 1 : 0; };
-                    update();
-                    item._selectionSignal = deviceRow.connect('notify::selected', update);
-                }
-            });
-            factory.connect('unbind', (_factory, item) => {
-                if (item._selectionSignal) deviceRow.disconnect(item._selectionSignal);
-                item._selectionSignal = 0;
-            });
-            return factory;
-        };
-        deviceRow = new Adw.ComboRow({name: 'usb-device-to-watch',
-            factory: deviceNameFactory(false), list_factory: deviceNameFactory(true),
+        deviceRow = fullValueCombo({name: 'usb-device-to-watch',
             model: Gtk.StringList.new(deviceNames()),
             selected: config.usb ? devices.findIndex(d => usbKey(d) === usbKey(config.usb)) : Gtk.INVALID_LIST_POSITION});
         this._deviceRow = deviceRow;
