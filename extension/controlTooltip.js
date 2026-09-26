@@ -20,6 +20,9 @@ export function buttonTooltip(button) {
         if (!eligible()) return;
         label.text = button.accessible_name;
         label.show();
+        // Opening a popup raises it above existing chrome, including this label.
+        // Raise the tooltip when shown, after the menu has taken its position.
+        label.get_parent().set_child_above_sibling(label, null);
         const [x, y] = button.get_transformed_position();
         const [width, height] = button.get_transformed_size();
         const monitor = Main.layoutManager.findMonitorForActor(button);

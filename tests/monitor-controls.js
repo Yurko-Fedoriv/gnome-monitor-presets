@@ -60,6 +60,12 @@ export async function exerciseControls(extension, delay) {
     await delay(550);
     if (!tooltips().some(t => t.visible && t.text === 'Unmute Monitor'))
         throw Error('Keyboard focus did not show the current mute action');
+    const tooltip = tooltips().find(t => t.visible && t.text === 'Unmute Monitor');
+    let menuLayer = mute;
+    while (menuLayer.get_parent() !== Main.uiGroup) menuLayer = menuLayer.get_parent();
+    const layers = Main.uiGroup.get_children();
+    if (layers.indexOf(tooltip) <= layers.indexOf(menuLayer))
+        throw Error('Tooltip is stacked behind the open menu');
     mute.emit('clicked', 1);
     await delay(50);
     if (mute.has_style_pseudo_class('checked') || states.mute.value)
