@@ -1,6 +1,11 @@
 .monitor-preset-tile { spacing: 10px; padding: 12px; min-width: 160px; }
 .monitor-preset-caption { font-size: 0.85em; color: #aaaaaa; }
 
-.monitor-control-button { padding: 6px 10px; }
+.monitor-control-button { padding: 6px; border-radius: 8px; }
 .monitor-control-button:checked { background-color: -st-accent-color; color: -st-accent-fgcolor; }
-.monitor-control-value { min-width: 3.5em; text-align: right; }
+.monitor-control-value { width: 3.5em; text-align: right; }
+
+.monitor-stat-column { padding: 3px 10px; }
+.monitor-control-row { spacing: 8px; }
+.monitor-control-slot { width: 2.4em; height: 2.4em; }
+.monitor-control-icon { padding: 6px; }

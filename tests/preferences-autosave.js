@@ -46,7 +46,8 @@ try {
         inputs: [{code: 15, label: 'DisplayPort'}, {code: 16, label: 'USB-C'}]};
     p._run = async command => command === 'action-state'
         ? {actions: JSON.parse(p._settings.get_string('monitor-actions')), controllers: []}
-        : {targets: [JSON.parse(JSON.stringify(target))], updated: 1, warnings: []};
+        : {targets: [JSON.parse(JSON.stringify(target))], updated: 1, warnings: [],
+            audio_outputs: [{key: 'test-output', label: 'HDMI / DisplayPort'}]};
     const originalRun = p._run;
     await inputPreferences(p);
     const usbRow = find(p._page, 'USB device to watch');
@@ -62,7 +63,14 @@ try {
     collect(usbRow);
     if (!marks.some(m => m.opacity === 1)) throw Error('Missing selected USB marker');
     const discoveryRow = find(p._inputGroup, 'HDMI-1 · LG HDR 4K');
-    const toggle = childType(discoveryRow, Gtk.Switch);
+    const capabilityRow = find(p._inputGroup, 'Capabilities');
+    if (!(capabilityRow instanceof Adw.ExpanderRow)) throw Error('Missing capabilities expander');
+    capabilityRow.expanded = true;
+    const toggle = childType(find(capabilityRow, 'Has Type-C'), Gtk.Switch);
+    const output = find(capabilityRow, 'Audio output');
+    output.selected = 1;
+    if (JSON.parse(p._settings.get_string('monitor-audio-outputs'))[JSON.stringify(spec.slice(1))] !== 'test-output')
+        throw Error('Audio association not saved');
     let finish;
     p._run = () => new Promise(resolve => { finish = resolve; });
     toggle.active = false;
@@ -85,6 +93,7 @@ try {
     await inputPreferences(p);
     if (find(find(p._actionGroup, 'Action 1'), 'HDMI-1 · LG HDR 4K').selected !== 2)
         throw Error('Action destination not restored');
+    if (find(p._inputGroup, 'Audio output').selected !== 1) throw Error('Audio association not restored');
     const before = find(p._inputGroup, 'HDMI-1 · LG HDR 4K');
     p._run = () => new Promise(resolve => { finish = resolve; });
     p._inputGroup.header_suffix.emit('clicked');

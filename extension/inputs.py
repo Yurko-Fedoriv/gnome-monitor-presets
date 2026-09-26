@@ -15,8 +15,11 @@ def choices(spec, cache):
 
 
 def describe(target, cache):
+    from controls import cached
     entry = cache.get(identity(target['spec']), {})
     return {**target, 'inputs': choices(target['spec'], cache),
+            'controls': cached(target['spec'], target.get('edid'), cache),
+            'controls_probed': entry.get('controls_updated'),
             'probed': entry.get('updated'), 'usb_c': bool(entry.get('usb_c')),
             'options': options(target['spec'], entry)}
 

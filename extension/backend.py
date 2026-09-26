@@ -361,13 +361,26 @@ def execute(args, display, db):
     command = args.command
     if command in ('monitor-controls', 'set-monitor-control'):
         import controls
-        return controls.execute(json.loads(args.value), display.capture(), drm_displays(),
-                                write=command == 'set-monitor-control')
-    if command in ('input-targets', 'refresh-action-inputs', 'monitor-profile'):
+        from inputs import identity
+        request = json.loads(args.value)
+        cache = read_json(ROOT / 'input-capabilities.json', {})
+        if command == 'monitor-controls':
+            return {'controls': controls.cached(request['spec'], request.get('edid'), cache)}
+        result = controls.execute(request, display.capture(), drm_displays(), write=True)
+        key = identity(request['spec'])
+        entry = cache.setdefault(key, {})
+        values = dict(controls.cached(request['spec'], request['edid'], cache))
+        values[result['feature']] = result['control']
+        entry.update(controls=values, controls_edid=request['edid'], controls_updated=time.time())
+        write_json(ROOT / 'input-capabilities.json', cache)
+        return result
+    if command in ('monitor-capabilities', 'refresh-monitor-capabilities',
+                   'input-targets', 'refresh-action-inputs', 'monitor-profile'):
         from input_actions import all_targets
         from inputs import describe, refresh, identity
         devices = drm_displays()
-        available = all_targets(display.capture(), db['presets'], devices)
+        current = display.capture()
+        available = all_targets(current, db['presets'], devices)
         cache = read_json(ROOT / 'input-capabilities.json', {})
         updated, warnings = (0, [])
         if command == 'monitor-profile':
@@ -377,11 +390,21 @@ def execute(args, display, db):
             cache[key] = update_options(target['spec'], cache.get(key, {}),
                                         {k: v for k, v in profile.items() if k != 'spec'})
             write_json(ROOT / 'input-capabilities.json', cache)
-        if command == 'refresh-action-inputs':
+        if command in ('refresh-monitor-capabilities', 'refresh-action-inputs'):
             updated, warnings = refresh(available, devices, cache)
+            import controls
+            warnings.extend(controls.refresh(available, current, devices, cache))
             write_json(ROOT / 'input-capabilities.json', cache)
-        return {'targets': [describe(t, cache) for t in available],
-                'updated': updated, 'warnings': warnings}
+        result = {'targets': [describe(t, cache) for t in available],
+                  'updated': updated, 'warnings': warnings}
+        if command in ('monitor-capabilities', 'refresh-monitor-capabilities'):
+            try:
+                from audio import outputs
+                result['audio_outputs'] = outputs()
+            except Exception as error:
+                result['audio_outputs'] = []
+                result['audio_error'] = str(error)
+        return result
     if command == 'action-state':
         from input_actions import load
         from msi import devices
@@ -433,6 +456,8 @@ def execute(args, display, db):
     if command == 'sync-native':
         return sync_native(display, db)
     if command == "status":
+        from inputs import describe
+        from input_actions import all_targets
         current = display.capture()
         matches = [p for p in db["presets"] if signature(p["layout"]) == signature(current)]
         active = next((p["id"] for p in matches if p["id"] == db.get("last")),
@@ -447,9 +472,13 @@ def execute(args, display, db):
             except ValueError as error:
                 item["unavailable"] = str(error)
             presets.append(item)
+        devices = drm_displays()
+        cache = read_json(ROOT / 'input-capabilities.json', {})
+        capabilities = [describe(t, cache) for t in all_targets(current, db['presets'], devices)]
         return {"presets": presets, "active": active, "current": current,
+                "capabilities": capabilities,
                 "previous": bool(db.get("previous")), "last": db.get("last"),
-                "pending": read_json(pending_path()), "ddc": drm_displays()}
+                "pending": read_json(pending_path()), "ddc": devices}
     if command == "save":
         name = args.value.strip()
         if not name or len(name) > 80:
@@ -554,7 +583,7 @@ def main():
                 result.setdefault('warnings', []).append(f'Could not save login layout: {error}')
         if args.command not in ("status", "export-current", "kvm-targets"):
             LOG.info("%s: %s", args.command, json.dumps(result))
-        if args.command not in ("monitor-controls", "set-monitor-control", "status", "export-current", "verify-current", "revert", "startup", "sync-native", "kvm-targets", "kvm-disconnect", "refresh-inputs", "input-profile", "input-targets", "refresh-action-inputs", "switch-input", "action-state", "run-action", "monitor-profile"):
+        if args.command not in ("monitor-capabilities", "refresh-monitor-capabilities", "monitor-controls", "set-monitor-control", "status", "export-current", "verify-current", "revert", "startup", "sync-native", "kvm-targets", "kvm-disconnect", "refresh-inputs", "input-profile", "input-targets", "refresh-action-inputs", "switch-input", "action-state", "run-action", "monitor-profile"):
             write_json(ROOT / "presets.json", db)
         print(json.dumps(result))
 

@@ -123,7 +123,7 @@ support for the login screen before signing in.
 
 ## Monitor input support
 
-Connect and activate the monitors here, then press **Refresh display inputs** in
+Connect and activate the monitors here, then press **Discover capabilities** in
 preferences. Discovery is cached by monitor identity and never runs automatically
 at login. Failed refreshes retain previous results. Input choices and manual
 capability settings come from the selected monitor driver.
@@ -201,16 +201,23 @@ GPL-2.0-or-later; see [LICENSE](LICENSE) and [NOTICE.md](NOTICE.md).
 
 ### Monitor brightness and sound
 
-Expand a monitor's statistics row in the panel menu to read its hardware controls.
-Brightness and volume sliders use the monitor's own DDC settings; the mute button
-also controls the monitor itself. Unsupported controls are omitted. Values are
-read again on opening and after changes, so the monitor's OSD remains authoritative.
+Use **Preferences → Monitor capabilities → Discover capabilities** with your
+monitors active. Discovery saves their inputs, available hardware controls, and
+last-known brightness, volume and mute values. Expand **Capabilities** beneath a
+monitor to review its controls, set manual options such as Type-C presence, and
+associate its HDMI/DisplayPort audio output. Associations save immediately and
+are retained when an audio output disconnects.
+
+Expand the monitor's aligned statistics row in the panel for its hardware sliders.
+Brightness and volume use the monitor's own DDC settings, and the mute button
+controls the monitor itself. Unsupported controls are omitted. Opening this menu
+uses the saved state without hardware reads; adjustments verify and save the new
+value. Use discovery again after changing settings through the monitor's OSD.
 These controls require `ddcutil` and access to the monitor's I2C bus.
 
-**Output here** selects the computer's audio destination using GNOME's output
-routing and shows a checkmark while selected. Use the adjacent arrow to associate
-an HDMI/DisplayPort audio output with that monitor first. Associations are saved;
-automatic matching is used only when the monitor name and output are unambiguous.
-Two identically named LGs therefore require an explicit choice. Routing does not
-change software volume or software mute, and an advertised audio output does not
-necessarily mean the monitor contains speakers (it may have a headphone socket).
+The volume icon becomes an **Output here** button when an audio association is
+configured, and is highlighted while that output is active. Without an association
+it remains a plain icon. This changes routing only, never software volume or
+software mute. Matching is explicit because output names do not reliably identify
+physical monitors. An advertised audio output may feed a headphone socket rather
+than built-in speakers.

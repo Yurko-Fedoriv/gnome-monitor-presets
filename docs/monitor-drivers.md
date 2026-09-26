@@ -115,3 +115,22 @@ complex mute responses, invalid ranges and unreachable devices are omitted.
 Every write revalidates active monitor identity, EDID, bus and current feature
 range; mute writes use only audio values 1/2, never screen-blank bits. Hardware
 writes still need a user-ready physical test. Automated tests mock DDC writes.
+
+
+Discovery and persistence are separate from panel rendering. The explicit
+`refresh-monitor-capabilities` command refreshes driver inputs and standard
+hardware controls independently. The existing `input-capabilities.json` filename
+and identity keys are retained for backward compatibility. Each entry adds
+`controls`, `controls_edid`, and `controls_updated`; old input lists and manual
+options survive refreshes. Transient control read failures retain last-known
+values, while explicit unsupported/unusable responses remove that control.
+`status` and `monitor-controls` return cached values without DDC reads. Verified
+writes update this same cache. Values changed outside the extension remain stale
+until the next discovery; the panel does not poll the hardware.
+
+Preferences renders driver manual options inside each monitor's **Capabilities**
+expander, beside detected controls and the audio-output choice. Add new manual
+options via driver descriptors instead of adding model checks to the UI.
+Audio associations retain the `monitor-audio-outputs` setting and are read by the
+panel live. `audio.py` enumerates GVC output descriptions/ports read-only for the
+preferences chooser; duplicate identities are excluded rather than guessed.

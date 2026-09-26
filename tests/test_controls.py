@@ -63,6 +63,65 @@ class ControlsTests(unittest.TestCase):
             with self.assertRaises(ValueError): self.execute(feature='volume', value=10)
             self.assertEqual(command.call_count, 1)
 
+class CapabilityCacheTests(unittest.TestCase):
+    def setUp(self):
+        import inputs
+        self.spec = ['HDMI-1', 'GSM', 'LG HDR 4K', 'one']
+        self.monitor = {'spec': self.spec, 'connector': 'HDMI-1', 'edid': 'edid'}
+        self.key = inputs.identity(self.spec)
+        self.current = {'logical': [{'monitors': [{'spec': self.spec}]}]}
+        self.devices = [{'connector': 'HDMI-1', 'edid': 'edid', 'bus': 3}]
+        self.cache = {self.key: {'codes': [15, 17], 'usb_c': True, 'controls_edid': 'edid',
+                              'controls': {'brightness': {'value': 80, 'maximum': 100},
+                                           'volume': {'value': 49, 'maximum': 100}}}}
+
+    def test_discovery_preserves_manual_settings_and_retains_transient_failures(self):
+        import subprocess
+        with patch.object(controls, 'read', side_effect=[{'value': 70, 'maximum': 100},
+                subprocess.TimeoutExpired('ddcutil', 6), controls.UnsupportedControl('Unsupported')]):
+            warnings = controls.refresh([self.monitor], self.current, self.devices, self.cache)
+        entry = self.cache[self.key]
+        self.assertTrue(entry['usb_c'])
+        self.assertEqual(entry['codes'], [15, 17])
+        self.assertEqual(entry['controls']['brightness']['value'], 70)
+        self.assertEqual(entry['controls']['volume']['value'], 49)
+        self.assertNotIn('mute', entry['controls'])
+        self.assertTrue(entry['controls_updated'])
+        self.assertEqual(len(warnings), 1)
+
+    def test_cached_capabilities_survive_cable_move_but_reject_changed_edid(self):
+        import inputs
+        moved = ['DP-1', *self.spec[1:]]
+        with patch.object(controls, 'command') as command:
+            self.assertEqual(controls.cached(moved, 'edid', self.cache)['volume']['value'], 49)
+            self.assertEqual(controls.cached(moved, 'different', self.cache), {})
+            described = inputs.describe({**self.monitor, 'spec': moved}, self.cache)
+            self.assertEqual(described['controls']['brightness']['value'], 80)
+            command.assert_not_called()
+
+    def test_backend_cached_reads_do_not_probe_and_writes_update_persistent_values(self):
+        import argparse
+        import backend
+        import json
+        import tempfile
+        from unittest.mock import Mock
+        with tempfile.TemporaryDirectory() as temporary, patch.object(backend, 'ROOT', Path(temporary)):
+            backend.write_json(backend.ROOT / 'input-capabilities.json', self.cache)
+            args = argparse.Namespace(command='monitor-controls', value=json.dumps(self.monitor))
+            with patch.object(controls, 'command') as command:
+                self.assertEqual(backend.execute(args, None, {})['controls']['volume']['value'], 49)
+                command.assert_not_called()
+            args.command = 'set-monitor-control'
+            args.value = json.dumps({**self.monitor, 'feature': 'volume', 'value': 65})
+            display = Mock(capture=lambda: self.current)
+            with patch.object(backend, 'drm_displays', return_value=self.devices), \
+                    patch.object(controls, 'command', side_effect=['VCP 62 C 49 100', '', 'VCP 62 C 65 100']):
+                backend.execute(args, display, {})
+            saved = backend.read_json(backend.ROOT / 'input-capabilities.json')[self.key]
+            self.assertEqual(saved['controls']['volume']['value'], 65)
+            self.assertTrue(saved['usb_c'])
+            self.assertEqual(saved['controls']['brightness']['value'], 80)
+
 
 if __name__ == '__main__':
     unittest.main()

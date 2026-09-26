@@ -14,7 +14,7 @@ import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import * as SwitcherPopup from 'resource:///org/gnome/shell/ui/switcherPopup.js';
 import {run, count, summary} from './client.js';
 import {preview} from './preview.js';
-import {MonitorAudio, monitorRow} from './monitorControls.js';
+import {MonitorAudio, monitorRow, alignMonitorRows} from './monitorControls.js';
 import {KvmWatcher} from './kvm.js';
 import {InputShortcuts} from './inputShortcuts.js';
 
@@ -176,14 +176,16 @@ export default class MonitorPresets extends Extension {
         layoutPreview.x_expand = true;
         info.add_child(layoutPreview);
         menu.addMenuItem(info);
-        const peers = state.current.logical.flatMap(g => g.monitors.map(m => m.spec));
+        const monitorRows = [];
         for (const group of state.current.logical) {
             for (const monitor of group.monitors) {
-                const matches = state.ddc.filter(d => d.connector === monitor.spec[0]);
-                menu.addMenuItem(monitorRow(this.path, monitor, group,
-                    matches.length === 1 ? matches[0] : null, this._monitorAudio, peers));
+                const capability = state.capabilities?.find(t => JSON.stringify(t.spec) === JSON.stringify(monitor.spec));
+                const row = monitorRow(this.path, monitor, group, capability, this._monitorAudio);
+                menu.addMenuItem(row);
+                monitorRows.push(row);
             }
         }
+        alignMonitorRows(monitorRows);
         menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
         for (const preset of state.presets) {
             const item = new PopupMenu.PopupMenuItem(`${preset.name} · ${count(preset.layout)} ${count(preset.layout) === 1 ? 'display' : 'displays'}`);
