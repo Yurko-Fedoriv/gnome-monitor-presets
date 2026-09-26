@@ -3,10 +3,11 @@ import Gtk from 'gi://Gtk';
 import GObject from 'gi://GObject';
 import GLib from 'gi://GLib';
 import Pango from 'gi://Pango';
+import {monitorName} from './monitorNames.js';
 
 export function alignedDisplaySummary(layout) {
     const rows = layout.logical.flatMap(group => group.monitors.map(monitor => [
-        `${monitor.spec[0]}${group.primary ? '*' : ''}`,
+        `${monitorName(monitor.spec)}${group.primary ? '*' : ''}`,
         `${monitor.width}×${monitor.height}`,
         `${Number(monitor.refresh.toFixed(2))} Hz`,
         `${Math.round(group.scale * 100)}%`,
