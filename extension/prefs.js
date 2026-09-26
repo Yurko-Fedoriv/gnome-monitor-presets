@@ -236,12 +236,12 @@ export default class Preferences extends ExtensionPreferences {
         if (this._group)
             this._page.remove(this._group);
         this._group = new Adw.PreferencesGroup({title: 'Saved presets',
-            description: 'Order here is the Super+P cycle order. Disabled or missing displays are not silently replaced.'});
+            description: 'Order here is the Super+P cycle order.\nDisplays disabled in a preset stay off. Presets that require a missing display cannot be applied.'});
         this._page.add(this._group);
         const moveButtons = [];
         for (const [index, preset] of state.presets.entries()) {
             const expander = new Adw.ExpanderRow({title: preset.name,
-                subtitle: preset.unavailable ?? summary(preset.layout).replaceAll('\n', ' / ')});
+                subtitle: preset.unavailable ?? summary(preset.layout), subtitle_lines: 0});
             this._group.add(expander);
             const order = new Gtk.Box({spacing: 6, valign: Gtk.Align.CENTER});
             for (const [icon, label, direction] of [
