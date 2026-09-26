@@ -238,11 +238,25 @@ export default class Preferences extends ExtensionPreferences {
         this._group = new Adw.PreferencesGroup({title: 'Saved presets',
             description: 'Order here is the Super+P cycle order.\nDisplays disabled in a preset stay off. Presets that require a missing display cannot be applied.'});
         this._page.add(this._group);
+        const group = this._group;
+        const list = new Gtk.ListBox({selection_mode: Gtk.SelectionMode.NONE,
+            css_classes: ['boxed-list']});
+        group.add(list);
+        const rows = new Map();
+        list.set_sort_func((a, b) => rows.get(a) - rows.get(b));
         const moveButtons = [];
+        let moving = false;
+        const updateMoves = () => {
+            for (const {button, preset, direction} of moveButtons) {
+                const index = this._presets.findIndex(p => p.id === preset.id);
+                button.sensitive = !moving && index + direction >= 0 && index + direction < this._presets.length;
+            }
+        };
         for (const [index, preset] of state.presets.entries()) {
             const expander = new Adw.ExpanderRow({title: preset.name,
                 subtitle: preset.unavailable ?? summary(preset.layout), subtitle_lines: 0});
-            this._group.add(expander);
+            rows.set(expander, index);
+            list.append(expander);
             const order = new Gtk.Box({spacing: 6, valign: Gtk.Align.CENTER});
             for (const [icon, label, direction] of [
                 ['go-up-symbolic', 'Move Up', -1], ['go-down-symbolic', 'Move Down', 1],
@@ -250,14 +264,35 @@ export default class Preferences extends ExtensionPreferences {
                 const button = new Gtk.Button({icon_name: icon, tooltip_text: label,
                     sensitive: index + direction >= 0 && index + direction < state.presets.length});
                 button.update_property([Gtk.AccessibleProperty.LABEL], [`${label}: ${preset.name}`]);
-                moveButtons.push(button);
+                moveButtons.push({button, preset, direction});
                 button.connect('clicked', async () => {
-                    const enabled = moveButtons.map(b => b.sensitive);
-                    for (const b of moveButtons) b.sensitive = false;
-                    if (await this._run('move', preset.id, String(direction)))
-                        await this._reload();
-                    else
-                        moveButtons.forEach((b, i) => { b.sensitive = enabled[i]; });
+                    if (moving) return;
+                    const focus = this._window.get_focus();
+                    moving = true;
+                    updateMoves();
+                    const result = await this._run('move', preset.id, String(direction));
+                    if (this._closed || this._group !== group) return;
+                    if (result) {
+                        const from = this._presets.findIndex(p => p.id === preset.id);
+                        const to = Math.max(0, Math.min(this._presets.length - 1, from + direction));
+                        this._presets.splice(to, 0, this._presets.splice(from, 1)[0]);
+                        for (const [row, position] of rows) {
+                            if (position === from) rows.set(row, to);
+                            else if (position === to) rows.set(row, from);
+                        }
+                        list.invalidate_sort();
+                        const selectedId = this._settings.get_string('fixed-preset');
+                        this._loading = true;
+                        this._fixed.model.splice(0, this._fixed.model.get_n_items(), this._presets.map(p => p.name));
+                        const selected = this._presets.findIndex(p => p.id === selectedId);
+                        this._fixed.selected = selected < 0 ? Gtk.INVALID_LIST_POSITION : selected;
+                        this._loading = false;
+                    }
+                    moving = false;
+                    updateMoves();
+                    if (focus?.is_sensitive()) focus.grab_focus();
+                    else order.get_first_child().sensitive
+                        ? order.get_first_child().grab_focus() : order.get_last_child().grab_focus();
                 });
                 order.append(button);
             }

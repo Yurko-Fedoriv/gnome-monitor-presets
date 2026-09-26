@@ -160,10 +160,27 @@ try {
     if (moveButton('First', 'go-up-symbolic').sensitive || moveButton('Third', 'go-down-symbolic').sensitive)
         throw Error('Preset boundary moves are enabled');
     if (find(p._group, 'Second').expanded) throw Error('Preset should start collapsed');
+    const savedGroup = p._group;
+    const savedCapabilities = p._inputGroup;
+    const secondPreset = find(p._group, 'Second');
+    secondPreset.expanded = true;
+    find(secondPreset, 'Name').text = 'Unfinished rename';
+    p._settings.set_string('fixed-preset', 'Second');
     moveButton('Second', 'go-up-symbolic').emit('clicked');
     await settle();
     if (presets[0].id !== 'Second' || p._presets[0].id !== 'Second' || moveButton('Second', 'go-up-symbolic').sensitive)
         throw Error('Preset order or move buttons did not refresh');
+    if (p._group !== savedGroup || p._inputGroup !== savedCapabilities ||
+        find(p._group, 'Second') !== secondPreset || !secondPreset.expanded ||
+        find(secondPreset, 'Name').text !== 'Unfinished rename')
+        throw Error('Reordering rebuilt rows or lost expanded edits');
+    const presetList = secondPreset.get_parent();
+    if (presetList.get_row_at_index(0) !== secondPreset || p._fixed.selected !== 0)
+        throw Error('Visible row order or fixed preset selection is wrong');
+    moveButton('Second', 'go-down-symbolic').emit('clicked');
+    await settle();
+    if (presetList.get_row_at_index(1) !== secondPreset || p._fixed.selected !== 1)
+        throw Error('Repeated moves use stale row positions');
     p._closed = true; p._clearDeviceRow(); p._clearCapabilityAudio?.();
     p._window.destroy();
     print('PASS: remembered USB selection, inline capabilities, exclusive audio choices, stable discovery, action autosave, preset conflict warning, reopen and preset reordering');
