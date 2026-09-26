@@ -66,8 +66,9 @@ export async function inputPreferences(owner) {
                 subtitle: subtitle(), expanded: expanded.get(identity) ?? false});
             row.connect('notify::expanded', () => expanded.set(identity, row.expanded));
             const detected = Object.keys(target.controls ?? {});
+            if (target.inputs.length) detected.unshift('input');
             if (target.controls_probed || detected.length) {
-                const labels = {brightness: 'Brightness', volume: 'Monitor volume', mute: 'Monitor mute'};
+                const labels = {input: 'Input switching', brightness: 'Brightness', volume: 'Volume', mute: 'Mute'};
                 row.add_row(new Adw.ActionRow({title: `Hardware controls: ${detected.map(key => labels[key] ?? key).join(' · ') || 'None detected'}`,
                     title_lines: 0}));
             }

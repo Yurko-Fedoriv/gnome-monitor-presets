@@ -4,6 +4,6 @@
   "description": "Save display layouts, switch with Super+P, and configure actions when a KVM disconnects.",
   "shell-version": ["50"],
   "session-modes": ["user", "unlock-dialog"],
-  "version": 32,
+  "version": 33,
   "settings-schema": "org.gnome.shell.extensions.monitor-presets"
 }
