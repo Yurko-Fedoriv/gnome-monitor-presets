@@ -5,6 +5,7 @@ import St from 'gi://St';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import {Slider} from 'resource:///org/gnome/shell/ui/slider.js';
+import {buttonTooltip} from './controlTooltip.js';
 import {monitorName} from './monitorNames.js';
 import {run} from './client.js';
 
@@ -71,9 +72,11 @@ export class MonitorAudio {
 }
 
 function button(label, icon) {
-    return new St.Button({style_class: 'button monitor-control-button', can_focus: true,
+    const actor = new St.Button({style_class: 'button monitor-control-button', can_focus: true, track_hover: true,
         accessible_name: label, child: icon ? new St.Icon({icon_name: icon,
             style_class: 'popup-menu-icon'}) : new St.Label({text: label})});
+    buttonTooltip(actor);
+    return actor;
 }
 
 function controlRow() {
@@ -111,7 +114,7 @@ export function monitorRow(path, monitor, group, capability, audio, command = ru
         const device = audio.resolve(monitor.spec);
         const active = device && audio.active === device.get_id();
         const configured = !!audio.saved(monitor.spec);
-        output.accessible_name = active ? 'Current audio output' : configured ? 'Output here' : 'Monitor volume';
+        output.accessible_name = active ? 'Current Audio Output' : configured ? (device ? 'Use This Audio Output' : 'Audio Output Unavailable') : 'Monitor Volume';
         if (configured) output.add_style_class_name('button');
         else output.remove_style_class_name('button');
         if (active) output.add_style_pseudo_class('checked');
@@ -217,7 +220,7 @@ export function monitorRow(path, monitor, group, capability, audio, command = ru
             let muted = controls.mute.value;
             const mute = button('Mute monitor', 'audio-volume-muted-symbolic');
             const sync = () => {
-                mute.accessible_name = muted ? 'Unmute monitor' : 'Mute monitor';
+                mute.accessible_name = muted ? 'Unmute Monitor' : 'Mute Monitor';
                 if (muted) mute.add_style_pseudo_class('checked');
                 else mute.remove_style_pseudo_class('checked');
             };

@@ -23,7 +23,7 @@ export async function inputPreferences(owner) {
         dialog.add_response('close', 'Close'); dialog.present(owner._window);
     };
     const discovery = new Adw.PreferencesGroup({title: 'Monitor capabilities',
-        description: 'Activate connected monitors, then discover their inputs and hardware controls. Capabilities and last-known values are stored; opening the panel does not probe monitors.'});
+        description: 'Control each monitor’s own input, brightness, volume and mute, where supported. Activate connected monitors before discovering their capabilities.'});
     owner._inputGroup = discovery;
     owner._page.add(discovery);
     const refresh = new Gtk.Button({label: 'Discover capabilities', valign: Gtk.Align.CENTER});
@@ -94,7 +94,7 @@ export async function inputPreferences(owner) {
                 row.add_row(optionRow);
             }
             const output = fullValueCombo({title: 'Audio output',
-                subtitle: audioError ? 'Audio outputs unavailable; saved association retained' : 'The volume icon routes sound here.\nThis does not change software volume.'});
+                subtitle: audioError ? 'Audio outputs unavailable; saved association retained' : 'Choose the sound output activated by this monitor’s speaker button.'});
             let choices = [];
             let updating = false;
             const updateOutput = () => {

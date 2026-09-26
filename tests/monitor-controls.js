@@ -1,7 +1,11 @@
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
+import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
 export async function exerciseControls(extension, delay) {
     const {monitorRow, MonitorAudio, alignMonitorRows} = await import(`file://${extension.path}/monitorControls.js`);
+    const tooltips = () => Main.uiGroup.get_children().filter(c =>
+        c.has_style_class_name?.('monitor-control-tooltip'));
+    const existingTooltips = new Set(tooltips());
     const spec = ['HDMI-1', 'GSM', 'LG HDR 4K', 'test'];
     const device = {get_id: () => 42, get_description: () => 'LG HDR 4K', get_origin: () => 'HDMI 1'};
     let selected = 0;
@@ -52,11 +56,18 @@ export async function exerciseControls(extension, delay) {
         throw Error(`Slider writes were not coalesced: ${JSON.stringify(calls)}`);
     const mute = rows[1].get_children().at(-1).child;
     if (!mute.has_style_pseudo_class('checked')) throw Error('Mute state missing');
+    mute.grab_key_focus();
+    await delay(550);
+    if (!tooltips().some(t => t.visible && t.text === 'Unmute Monitor'))
+        throw Error('Keyboard focus did not show the current mute action');
     mute.emit('clicked', 1);
     await delay(50);
     if (mute.has_style_pseudo_class('checked') || states.mute.value)
         throw Error('Hardware unmute failed');
-    const output = rows[1].get_children().find(c => c.child?.accessible_name === 'Current audio output').child;
+    await delay(550);
+    if (!tooltips().some(t => t.visible && t.text === 'Mute Monitor'))
+        throw Error('Mute tooltip did not follow the changed action');
+    const output = rows[1].get_children().find(c => c.child?.accessible_name === 'Current Audio Output').child;
     if (!output.has_style_pseudo_class('checked')) throw Error('Output active state missing');
     output.emit('clicked', 1);
     if (selected !== 1) throw Error('Output here did not select the device');
@@ -68,14 +79,17 @@ export async function exerciseControls(extension, delay) {
     if (output.reactive || output.has_style_class_name('button')) throw Error('Unconfigured volume icon is a button');
     const before = calls.length;
     row.menu.close(false);
+    if (tooltips().some(t => t.visible)) throw Error('Closed menu retained a tooltip');
     row.menu.open(false);
     await delay(50);
     if (calls.length !== before || slider.value !== 0.6) throw Error('Reopening lost cached state or probed hardware');
     other.destroy();
+    mute.grab_key_focus();
     slider.value = 0.8;
     row.destroy();
-    await delay(250);
+    await delay(550);
     if (calls.length !== before || audio.listeners.size) throw Error('Destroyed controls retained callbacks');
+    if (tooltips().some(t => !existingTooltips.has(t))) throw Error('Destroyed controls retained tooltips');
     extension._indicator.menu.close();
     const resolve = MonitorAudio.prototype.resolve;
     const routing = {choices: () => [device], saved: () => null, key: () => 'port'};
