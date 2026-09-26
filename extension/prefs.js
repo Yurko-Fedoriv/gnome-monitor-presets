@@ -236,7 +236,7 @@ export default class Preferences extends ExtensionPreferences {
         if (this._group)
             this._page.remove(this._group);
         this._group = new Adw.PreferencesGroup({title: 'Saved presets',
-            description: 'Order here is the Super+P cycle order.\nDisplays disabled in a preset stay off. Presets that require a missing display cannot be applied.'});
+            description: 'Order here is the Super+P cycle order.\nDisplays disabled in a preset stay off.\nPresets that require a missing display cannot be applied.'});
         this._page.add(this._group);
         const group = this._group;
         const list = new Gtk.ListBox({selection_mode: Gtk.SelectionMode.NONE,
