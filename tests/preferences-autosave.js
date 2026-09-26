@@ -135,6 +135,31 @@ try {
     naming.emit('response', 'add'); naming.close();
     if (!JSON.parse(p._settings.get_string('monitor-actions')).some(a => a.name === 'Action 2'))
         throw Error('Named action was not saved');
+    const iconButton = (widget, icon) => {
+        if (widget instanceof Gtk.Button && widget.icon_name === icon) return widget;
+        for (let child = widget.get_first_child(); child; child = child.get_next_sibling()) {
+            const found = iconButton(child, icon); if (found) return found;
+        }
+        return null;
+    };
+    const actionGroup = p._actionGroup;
+    const secondAction = find(actionGroup, 'Action 2');
+    const actionList = secondAction.get_parent();
+    if (iconButton(secondAction, 'go-down-symbolic').sensitive)
+        throw Error('Last action can move down');
+    iconButton(secondAction, 'go-up-symbolic').emit('clicked');
+    if (p._actionGroup !== actionGroup || actionList.get_row_at_index(0) !== secondAction || !secondAction.expanded ||
+        JSON.parse(p._settings.get_string('monitor-actions'))[0].name !== 'Action 2' ||
+        iconButton(secondAction, 'go-up-symbolic').sensitive)
+        throw Error('Action reorder rebuilt rows, lost expansion or did not save');
+    iconButton(secondAction, 'go-down-symbolic').emit('clicked');
+    if (actionList.get_row_at_index(1) !== secondAction ||
+        JSON.parse(p._settings.get_string('monitor-actions'))[1].name !== 'Action 2')
+        throw Error('Repeated action move used stale order');
+    iconButton(find(secondAction, 'Delete action'), 'edit-delete-symbolic').emit('clicked');
+    const remaining = actionList.get_row_at_index(0);
+    if (iconButton(remaining, 'go-up-symbolic').sensitive || iconButton(remaining, 'go-down-symbolic').sensitive)
+        throw Error('Action deletion did not update reorder buttons');
     const presets = ['First', 'Second', 'Third'].map(name => ({id: name, name, layout: {logical: []}}));
     p._fixed = new Adw.ComboRow();
     p._run = async (command, id, direction) => {
@@ -183,5 +208,5 @@ try {
         throw Error('Repeated moves use stale row positions');
     p._closed = true; p._clearDeviceRow(); p._clearCapabilityAudio?.();
     p._window.destroy();
-    print('PASS: remembered USB selection, inline capabilities, exclusive audio choices, stable discovery, action autosave, preset conflict warning, reopen and preset reordering');
+    print('PASS: remembered USB selection, inline capabilities, exclusive audio choices, stable discovery, action autosave, preset conflict warning, reopen, action and preset reordering');
 } finally { GLib.unlink(module); GLib.rmdir(temporary); }

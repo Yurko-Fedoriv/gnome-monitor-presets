@@ -153,9 +153,22 @@ export async function inputPreferences(owner) {
     });
     await owner._reloadKvm();
     const group = new Adw.PreferencesGroup({title: 'Actions',
-        description: 'Each trigger runs one named action. Choose a preset, monitor inputs, or both. Unavailable monitors are skipped quietly. An action-induced KVM disconnect is suppressed once.'});
+        description: 'Order here determines the dropdown menu order. Each trigger runs one named action. Choose a preset, monitor inputs, or both. Unavailable monitors are skipped quietly. An action-induced KVM disconnect is suppressed once.'});
     owner._actionGroup = group;
     owner._page.add(group);
+    const actionList = new Gtk.ListBox({selection_mode: Gtk.SelectionMode.NONE,
+        css_classes: ['boxed-list']});
+    group.add(actionList);
+    const actionRows = new Map();
+    actionList.set_sort_func((a, b) => actions.indexOf(actionRows.get(a).action) - actions.indexOf(actionRows.get(b).action));
+    const updateOrder = () => {
+        actionList.invalidate_sort();
+        for (const {action, up, down} of actionRows.values()) {
+            const index = actions.indexOf(action);
+            up.sensitive = index > 0;
+            down.sensitive = index < actions.length - 1;
+        }
+    };
     const add = new Gtk.Button({label: '+ Add', valign: Gtk.Align.CENTER});
     group.header_suffix = add;
     const capture = (action, done) => {
@@ -187,6 +200,28 @@ export async function inputPreferences(owner) {
     };
     const addAction = action => {
         const expander = new Adw.ExpanderRow({title: action.name, subtitle: 'No triggers', expanded: false});
+        const order = new Gtk.Box({spacing: 6, valign: Gtk.Align.CENTER});
+        const controls = {action};
+        for (const [key, icon, label, direction] of [
+            ['up', 'go-up-symbolic', 'Move Up', -1], ['down', 'go-down-symbolic', 'Move Down', 1],
+        ]) {
+            const button = new Gtk.Button({icon_name: icon, tooltip_text: label});
+            button.update_property([Gtk.AccessibleProperty.LABEL], [label]);
+            controls[key] = button;
+            button.connect('clicked', () => {
+                const from = actions.indexOf(action);
+                const to = from + direction;
+                if (from < 0 || to < 0 || to >= actions.length) return;
+                const focus = owner._window.get_focus();
+                actions.splice(to, 0, actions.splice(from, 1)[0]);
+                save(); updateOrder();
+                if (focus?.is_sensitive()) focus.grab_focus();
+                else (controls.up.sensitive ? controls.up : controls.down).grab_focus();
+            });
+            order.append(button);
+        }
+        actionRows.set(expander, controls);
+        expander.add_suffix(order);
         const name = new Adw.EntryRow({title: 'Action name', text: action.name});
         name.connect('notify::text', () => { action.name = name.text; expander.title = action.name || 'Unnamed action'; save(); });
         expander.add_row(name);
@@ -276,10 +311,13 @@ export async function inputPreferences(owner) {
         remove.connect('clicked', () => {
             actions = actions.filter(a => a.id !== action.id);
             actionRefreshers.splice(actionRefreshers.indexOf(updateMonitors), 1);
-            group.remove(expander); save();
+            actionList.remove(expander);
+            actionRows.delete(expander);
+            save(); updateOrder();
         });
         removeRow.add_suffix(remove);
-        rebuildTriggers(); updateMonitors(); expander.add_row(removeRow); group.add(expander);
+        rebuildTriggers(); updateMonitors(); expander.add_row(removeRow); actionList.append(expander);
+        updateOrder();
         return expander;
     };
     for (const action of actions) addAction(action);
