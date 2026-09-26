@@ -238,10 +238,30 @@ export default class Preferences extends ExtensionPreferences {
         this._group = new Adw.PreferencesGroup({title: 'Saved presets',
             description: 'Order here is the Super+P cycle order. Disabled or missing displays are not silently replaced.'});
         this._page.add(this._group);
-        for (const preset of state.presets) {
+        const moveButtons = [];
+        for (const [index, preset] of state.presets.entries()) {
             const expander = new Adw.ExpanderRow({title: preset.name,
                 subtitle: preset.unavailable ?? summary(preset.layout).replaceAll('\n', ' / ')});
             this._group.add(expander);
+            const order = new Gtk.Box({spacing: 6, valign: Gtk.Align.CENTER});
+            for (const [icon, label, direction] of [
+                ['go-up-symbolic', 'Move Up', -1], ['go-down-symbolic', 'Move Down', 1],
+            ]) {
+                const button = new Gtk.Button({icon_name: icon, tooltip_text: label,
+                    sensitive: index + direction >= 0 && index + direction < state.presets.length});
+                button.update_property([Gtk.AccessibleProperty.LABEL], [`${label}: ${preset.name}`]);
+                moveButtons.push(button);
+                button.connect('clicked', async () => {
+                    const enabled = moveButtons.map(b => b.sensitive);
+                    for (const b of moveButtons) b.sensitive = false;
+                    if (await this._run('move', preset.id, String(direction)))
+                        await this._reload();
+                    else
+                        moveButtons.forEach((b, i) => { b.sensitive = enabled[i]; });
+                });
+                order.append(button);
+            }
+            expander.add_suffix(order);
             const name = new Adw.EntryRow({title: 'Name', text: preset.name, show_apply_button: true});
             name.connect('apply', async () => {
                 await this._run('rename', preset.id, name.text);
@@ -249,7 +269,7 @@ export default class Preferences extends ExtensionPreferences {
             });
             expander.add_row(name);
             const buttons = new Adw.ActionRow({title: 'Manage preset'});
-            for (const [label, command, value] of [['↑', 'move', '-1'], ['↓', 'move', '1'],
+            for (const [label, command, value] of [
                 ['Replace with current', 'update', ''], ['Delete', 'delete', '']]) {
                 const button = new Gtk.Button({label, valign: Gtk.Align.CENTER});
                 if (command === 'delete')

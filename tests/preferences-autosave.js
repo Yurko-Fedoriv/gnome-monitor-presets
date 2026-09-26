@@ -135,7 +135,36 @@ try {
     naming.emit('response', 'add'); naming.close();
     if (!JSON.parse(p._settings.get_string('monitor-actions')).some(a => a.name === 'Action 2'))
         throw Error('Named action was not saved');
+    const presets = ['First', 'Second', 'Third'].map(name => ({id: name, name, layout: {logical: []}}));
+    p._fixed = new Adw.ComboRow();
+    p._run = async (command, id, direction) => {
+        if (command === 'status') return {presets: [...presets]};
+        if (command === 'move') {
+            const index = presets.findIndex(preset => preset.id === id);
+            presets.splice(index + Number(direction), 0, presets.splice(index, 1)[0]);
+            return {ok: true};
+        }
+        return originalRun(command);
+    };
+    await p._reload();
+    const moveButton = (name, icon) => {
+        const visit = widget => {
+            if (widget instanceof Gtk.Button && widget.icon_name === icon) return widget;
+            for (let child = widget.get_first_child(); child; child = child.get_next_sibling()) {
+                const found = visit(child); if (found) return found;
+            }
+            return null;
+        };
+        return visit(find(p._group, name));
+    };
+    if (moveButton('First', 'go-up-symbolic').sensitive || moveButton('Third', 'go-down-symbolic').sensitive)
+        throw Error('Preset boundary moves are enabled');
+    if (find(p._group, 'Second').expanded) throw Error('Preset should start collapsed');
+    moveButton('Second', 'go-up-symbolic').emit('clicked');
+    await settle();
+    if (presets[0].id !== 'Second' || p._presets[0].id !== 'Second' || moveButton('Second', 'go-up-symbolic').sensitive)
+        throw Error('Preset order or move buttons did not refresh');
     p._closed = true; p._clearDeviceRow(); p._clearCapabilityAudio?.();
     p._window.destroy();
-    print('PASS: remembered USB selection, inline capabilities, exclusive audio choices, stable discovery, action autosave, preset conflict warning and reopen');
+    print('PASS: remembered USB selection, inline capabilities, exclusive audio choices, stable discovery, action autosave, preset conflict warning, reopen and preset reordering');
 } finally { GLib.unlink(module); GLib.rmdir(temporary); }
