@@ -46,10 +46,11 @@ export default class Preferences extends ExtensionPreferences {
             model: Gtk.StringList.new(['Last activated preset', 'Always use a fixed preset']),
             selected: this._settings.get_string('startup-policy') === 'fixed' ? 1 : 0});
         policy.connect('notify::selected', () => {
+            this._fixed.visible = policy.selected === 1;
             this._settings.set_string('startup-policy', policy.selected === 1 ? 'fixed' : 'last');
         });
         startup.add(policy);
-        this._fixed = fullValueCombo({title: 'Fixed preset'});
+        this._fixed = fullValueCombo({title: 'Fixed preset', visible: policy.selected === 1});
         startup.add(this._fixed);
         this._fixed.connect('notify::selected', () => {
             if (!this._loading && this._presets?.[this._fixed.selected])
