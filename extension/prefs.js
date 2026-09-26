@@ -2,7 +2,7 @@ import Adw from 'gi://Adw';
 import Gio from 'gi://Gio';
 import Gtk from 'gi://Gtk';
 import GLib from 'gi://GLib';
-import {alignedDisplaySummary, fullValueCombo} from './preferencesWidgets.js';
+import {alignedDisplaySummaries, fullValueCombo} from './preferencesWidgets.js';
 import {usbDevices, usbKey} from './kvm.js';
 import {ExtensionPreferences} from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
 import {run} from './client.js';
@@ -252,9 +252,10 @@ export default class Preferences extends ExtensionPreferences {
                 button.sensitive = !moving && index + direction >= 0 && index + direction < this._presets.length;
             }
         };
+        const summaries = alignedDisplaySummaries(state.presets.map(preset => preset.layout));
         for (const [index, preset] of state.presets.entries()) {
             const expander = new Adw.ExpanderRow({title: preset.name,
-                subtitle: preset.unavailable ?? alignedDisplaySummary(preset.layout), subtitle_lines: 0});
+                subtitle: preset.unavailable ?? summaries[index], subtitle_lines: 0});
             rows.set(expander, index);
             list.append(expander);
             const order = new Gtk.Box({spacing: 6, valign: Gtk.Align.CENTER});

@@ -5,21 +5,25 @@ import GLib from 'gi://GLib';
 import Pango from 'gi://Pango';
 import {monitorName} from './monitorNames.js';
 
-export function alignedDisplaySummary(layout) {
-    const rows = layout.logical.flatMap(group => group.monitors.map(monitor => [
+export function alignedDisplaySummaries(layouts) {
+    const summaries = layouts.map(layout => layout.logical.flatMap(group => group.monitors.map(monitor => [
         `${monitorName(monitor.spec)}${group.primary ? '*' : ''}`,
         `${monitor.width}×${monitor.height}`,
         `${Number(monitor.refresh.toFixed(2))} Hz`,
         `${Math.round(group.scale * 100)}%`,
         `X: ${group.x}`, `Y: ${group.y}`,
-    ]));
-    if (!rows.length) return '';
+    ])));
+    const rows = summaries.flat();
+    if (!rows.length) return layouts.map(() => '');
     const widths = rows[0].map((_, column) => Math.max(...rows.map(row => row[column].length)));
-    const text = rows.map(row => row.map((value, column) =>
-        column === row.length - 1 ? value : value.padEnd(widths[column])).join('  ')).join('\n');
-    // Padding only aligns reliably with a fixed-width font. Escape monitor
-    // identifiers before passing the summary to Adwaita's markup label.
-    return `<span font_family="monospace">${GLib.markup_escape_text(text, -1)}</span>`;
+    return summaries.map(summary => {
+        if (!summary.length) return '';
+        const text = summary.map(row => row.map((value, column) =>
+            column === row.length - 1 ? value : value.padEnd(widths[column])).join('  ')).join('\n');
+        // Share widths across all presets, using a fixed-width font so padding
+        // aligns reliably. Escape monitor identifiers before applying markup.
+        return `<span font_family="monospace">${GLib.markup_escape_text(text, -1)}</span>`;
+    });
 }
 
 // Closed selectors stay on one line; the open list always shows full values.
